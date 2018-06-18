@@ -89,7 +89,7 @@ contract ERC20Basic {
   function totalSupply() public view returns (uint256);
   function balanceOf(address who) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
-  event Transfer(address indexed from, address indexed to, uint256 value);
+  event Transfer(address indexed _from, address indexed _to, uint256 _value);
 }
 
 // File: node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol
@@ -102,7 +102,7 @@ contract ERC20 is ERC20Basic {
   function allowance(address owner, address spender) public view returns (uint256);
   function transferFrom(address from, address to, uint256 value) public returns (bool);
   function approve(address spender, uint256 value) public returns (bool);
-  event Approval(address indexed owner, address indexed spender, uint256 value);
+  event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 }
 
 // File: node_modules/zeppelin-solidity/contracts/token/ERC20/SafeERC20.sol
@@ -115,7 +115,7 @@ contract ERC20 is ERC20Basic {
  */
 library SafeERC20 {
   function safeTransfer(ERC20Basic token, address to, uint256 value) internal {
-    assert(token.transfer(to, value));
+    require(token.transfer(to, value));
   }
 
   function safeTransferFrom(
@@ -126,11 +126,11 @@ library SafeERC20 {
   )
     internal
   {
-    assert(token.transferFrom(from, to, value));
+    require(token.transferFrom(from, to, value));
   }
 
   function safeApprove(ERC20 token, address spender, uint256 value) internal {
-    assert(token.approve(spender, value));
+    require(token.approve(spender, value));
   }
 }
 
@@ -269,57 +269,6 @@ contract BasicToken is ERC20Basic {
 
 }
 
-// File: contracts/Burnable.sol
-
-/**
- * @title Burnable
- * @dev Token that can be irreversibly burned (destroyed).
- * @dev Edited zeppelin-solidity/contracts/ERC20/BurnableToken.sol for onlyOwner
- */
-
-contract Burnable is BasicToken, Ownable {
-    event Burn(address indexed burner, uint256 value);
-    /**
-     * @dev Burns a specific amount of tokens.
-     * @param _value The amount of token to be burned.
-     */
-    function burn(uint256 _value) public onlyOwner {
-        _burn(msg.sender, _value);
-    }
-
-    function _burn(address _who, uint256 _value) internal {
-        require(_value <= balances[_who]);
-        // no need to require value <= totalSupply, since that would imply the
-        // sender's balance is greater than the totalSupply, which *should* be an assertion failure
-
-        balances[_who] = balances[_who].sub(_value);
-        totalSupply_ = totalSupply_.sub(_value);
-        emit Burn(_who, _value);
-        emit Transfer(_who, address(0), _value);
-    }
-}
-
-// File: contracts/Initializable.sol
-
-contract Initializable {
-    bool public initialized = false;
-
-    modifier afterInitialized {
-        require(initialized);
-        _;
-    }
-
-    modifier beforeInitialized {
-        require(!initialized);
-        _;
-    }
-
-    function endInitialization() internal beforeInitialized returns (bool) {
-        initialized = true;
-        return true;
-    }
-}
-
 // File: node_modules/zeppelin-solidity/contracts/lifecycle/Pausable.sol
 
 /**
@@ -423,44 +372,6 @@ contract StandardToken is ERC20, BasicToken {
   function allowance(address _owner, address _spender) public view returns (uint256) {
     return allowed[_owner][_spender];
   }
-
-  /**
-   * @dev Increase the amount of tokens that an owner allowed to a spender.
-   *
-   * approve should be called when allowed[_spender] == 0. To increment
-   * allowed value is better to use this function to avoid 2 calls (and wait until
-   * the first transaction is mined)
-   * From MonolithDAO Token.sol
-   * @param _spender The address which will spend the funds.
-   * @param _addedValue The amount of tokens to increase the allowance by.
-   */
-  function increaseApproval(address _spender, uint _addedValue) public returns (bool) {
-    allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_addedValue);
-    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
-    return true;
-  }
-
-  /**
-   * @dev Decrease the amount of tokens that an owner allowed to a spender.
-   *
-   * approve should be called when allowed[_spender] == 0. To decrement
-   * allowed value is better to use this function to avoid 2 calls (and wait until
-   * the first transaction is mined)
-   * From MonolithDAO Token.sol
-   * @param _spender The address which will spend the funds.
-   * @param _subtractedValue The amount of tokens to decrease the allowance by.
-   */
-  function decreaseApproval(address _spender, uint _subtractedValue) public returns (bool) {
-    uint oldValue = allowed[msg.sender][_spender];
-    if (_subtractedValue > oldValue) {
-      allowed[msg.sender][_spender] = 0;
-    } else {
-      allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
-    }
-    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
-    return true;
-  }
-
 }
 
 // File: contracts/ERC223.sol
@@ -468,7 +379,7 @@ contract StandardToken is ERC20, BasicToken {
 contract ERC223 is ERC20 {
     function transfer(address to, uint256 value, bytes data) public returns (bool);
     function transferFrom(address from, address to, uint256 value, bytes data) public returns (bool);
-    event Transfer(address indexed from, address indexed to, uint value, bytes data);
+    event Transfer(address indexed _from, address indexed _to, uint256 indexed _value, bytes _data);
 }
 
 // File: contracts/ERC223Receiver.sol
@@ -488,15 +399,14 @@ contract ERC223Receiver {
     function tokenFallback(address _from, uint _value, bytes _data) public;
 }
 
-// File: contracts/PausableERC223Token.sol
+// File: contracts/ERC223Token.sol
 
 /**
  * @title ERC223 token implementation.
  * @dev Standard ERC223 implementation with capability of deactivating ERC223 functionalities.
  *      Contracts that are known to support ERC20 tokens can be whitelisted to bypass tokenfallback call.
- *      Also has Pausable feature.
  */
-contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
+contract ERC223Token is ERC223, StandardToken, Ownable {
     using SafeMath for uint256;
 
     // If true will invoke token fallback else it will act as an ERC20 token
@@ -535,14 +445,15 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
 
     /**
      * @dev Calls the tokenFallback function of the token receiver.
-     * @param _address  Token sender address.
+     * @param _from  Token sender address.
+     * @param _to  Token receiver address.
      * @param _value Amount of tokens.
      * @param _data  Transaction metadata.
      */
-    function invokeTokenReceiver(address _address, uint256 _value, bytes _data) internal {
-        ERC223Receiver receiver = ERC223Receiver(_address);
-        receiver.tokenFallback(msg.sender, _value, _data);
-        emit Transfer(msg.sender, _address, _value, _data);
+    function invokeTokenReceiver(address _from, address _to, uint256 _value, bytes _data) internal {
+        ERC223Receiver receiver = ERC223Receiver(_to);
+        receiver.tokenFallback(_from, _value, _data);
+        emit Transfer(_from, _to, _value, _data);
     }
 
     /**
@@ -551,7 +462,7 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
      * @param _to Receiver address.
      * @param _value Amount of tokens to be transferred.
      */
-    function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
+    function transfer(address _to, uint256 _value) public returns (bool) {
         bytes memory emptyData;
         return transfer(_to, _value, emptyData);
     }
@@ -564,15 +475,16 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
      * @param _value Amount of tokens to be transferred.
      * @param _data Transaction metadata.
      */
-    function transfer(address _to, uint256 _value, bytes _data) public whenNotPaused returns (bool) {
+    function transfer(address _to, uint256 _value, bytes _data) public returns (bool) {
         bool status = super.transfer(_to, _value);
 
         // Invoke token receiver only when erc223 is activate, not listed on the whitelist and is a contract.
         if (erc223Activated 
             && isContract(_to)
             && supportedContracts[_to] == false 
-            && userAcknowledgedContracts[msg.sender][_to] == false) {
-            invokeTokenReceiver(_to, _value, _data);
+            && userAcknowledgedContracts[msg.sender][_to] == false
+            && status == true) {
+            invokeTokenReceiver(msg.sender, _to, _value, _data);
         }
         return status;
     }
@@ -584,7 +496,7 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
      * @param _to Receiver address.
      * @param _value Amount of tokens to be transferred.
      */
-    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
         bytes memory emptyData;
         return transferFrom(_from, _to, _value, emptyData);
     }
@@ -598,28 +510,51 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
      * @param _value Amount of tokens to be transferred.
      * @param _data Transaction metadata.
      */
-    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public whenNotPaused returns (bool) {
+    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool) {
         bool status = super.transferFrom(_from, _to, _value);
 
         if (erc223Activated 
             && isContract(_to)
             && supportedContracts[_to] == false 
-            && userAcknowledgedContracts[msg.sender][_to] == false) {
-            invokeTokenReceiver(_to, _value, _data);
+            && userAcknowledgedContracts[msg.sender][_to] == false
+            && status == true) {
+            invokeTokenReceiver(_from, _to, _value, _data);
         }
         return status;
     }
 
-    function approve(address _spender, uint256 _value) public whenNotPaused returns (bool) {
+    function approve(address _spender, uint256 _value) public returns (bool) {
         return super.approve(_spender, _value);
     }
+}
 
-    function increaseApproval(address _spender, uint _addedValue) public whenNotPaused returns (bool success) {
-        return super.increaseApproval(_spender, _addedValue);
+// File: contracts/PausableERC223Token.sol
+
+/**
+ * @title ERC223 token implementation.
+ * @dev Standard ERC223 implementation with Pausable feature.      
+ */
+
+contract PausableERC223Token is ERC223Token, Pausable {
+
+    function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
+        return super.transfer(_to, _value);
     }
 
-    function decreaseApproval(address _spender, uint _subtractedValue) public whenNotPaused returns (bool success) {
-        return super.decreaseApproval(_spender, _subtractedValue);
+    function transfer(address _to, uint256 _value, bytes _data) public whenNotPaused returns (bool) {
+        return super.transfer(_to, _value, _data);
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
+        return super.transferFrom(_from, _to, _value);
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public whenNotPaused returns (bool) {
+        return super.transferFrom(_from, _to, _value, _data);
+    }
+
+    function approve(address _spender, uint256 _value) public whenNotPaused returns (bool) {
+        return super.approve(_spender, _value);
     }
 }
 
@@ -629,65 +564,72 @@ contract PausableERC223Token is ERC223, StandardToken, Ownable, Pausable {
  * @dev New SynchroCoin SYC Token migration from legacy contract.
  */
 
-contract SynchroCoin is PausableERC223Token, Claimable, Initializable, Burnable {
+contract SynchroCoin is PausableERC223Token, Claimable {
     string public constant name = "SynchroCoin";
     string public constant symbol = "SYC";
-    uint256 public constant decimals = 18;
+    uint8 public constant decimals = 18;
+    MigrationAgent public migrationAgent;
 
-    ERC20 public legacySycContract; // Previous SYC Contract
-    uint256 public targetSupply;    // Target supply amount to meet (total supply of the legacy contract)
+    function SynchroCoin(address _legacySycAddress, uint256 _timelockReleaseTime) public {        
+        migrationAgent = new MigrationAgent(_legacySycAddress, this, _timelockReleaseTime);
+        migrationAgent.transferOwnership(msg.sender);
 
-    uint256 private constant TIMELOCK_RELEASE_TIME = 1540047600;    // Timelocked token release date set to October 20, 2018 15:00 GMT
-    TokenTimelock public tokenTimelock;                             // TokenTimelock for Synchrolife team, advisors and partners
+        ERC20 legacySycContract = ERC20(_legacySycAddress);
+        totalSupply_ = legacySycContract.totalSupply();
+        balances[migrationAgent] = balances[migrationAgent].add(totalSupply_);
+
+        pause();
+    }
+}
+
+// File: contracts/MigrationAgent.sol
+
+/**
+ *  @title MigrationAgent
+ *  @dev Contract that keeps track of the migration process from one token contract to another. 
+ */
+contract MigrationAgent is Ownable {
+    using SafeMath for uint256;
+
+    ERC20 public legacySycContract;    // Previous Token Contract
+    ERC20 public sycContract;       // New Token Contract to migrate to
+    uint256 public targetSupply;    // Target supply amount to meet
+    uint256 public migratedSupply;  // Total amount of tokens migrated
+
+    address[] public migratedAddresses;         // List of addresses that have been migrated
+    mapping (address => bool) public migrated;  // Flags to keep track of addresses already migrated
+
+    uint256 public timelockReleaseTime; // Timelocked token release time
+    TokenTimelock public tokenTimelock; // TokenTimelock for Synchrolife team, advisors and partners
 
     event Migrate(address indexed holder, uint256 balance);
 
-    function SynchroCoin(address _legacySycAddress) public {
+    function MigrationAgent(address _legacySycAddress, address _sycAddress, uint256 _timelockReleaseTime) public {
         require(_legacySycAddress != address(0));
+        require(_sycAddress != address(0));
 
-        // The previous SynchroCoin contract;
         legacySycContract = ERC20(_legacySycAddress);
-        // Set the target supply to the total supply of previous SynchroCoin contract
         targetSupply = legacySycContract.totalSupply();
-
-        pause();
+        timelockReleaseTime = _timelockReleaseTime;
+        sycContract = ERC20(_sycAddress);
     }
 
     /**
      * @dev Create a new timelock to replace the old one.
      * @param _legacyVaultAddress Address of the vault contract from previous SynchroCoin contract.
      */
-    function migrateVault(address _legacyVaultAddress) onlyOwner beforeInitialized external {
+    function migrateVault(address _legacyVaultAddress) onlyOwner external { 
         require(_legacyVaultAddress != address(0));
+        require(!migrated[_legacyVaultAddress]);
+        require(tokenTimelock == address(0));
 
         // Lock up the tokens for the team/advisors/partners.
+        migrated[_legacyVaultAddress] = true;        
         uint256 timelockAmount = legacySycContract.balanceOf(_legacyVaultAddress);
-        tokenTimelock = new TokenTimelock(this, msg.sender, TIMELOCK_RELEASE_TIME);
-        balances[tokenTimelock] = balances[tokenTimelock].add(timelockAmount);
-        totalSupply_ = totalSupply_.add(timelockAmount);
-    }
-
-    /**
-     * @dev Migrate balances from on address to another.
-     *      Intended use is for addresses that may lock up the funds (i.e. DEX contracts)
-     * @param _from The address to migrate balance from
-     * @param _to The address to migrate balance to
-     */
-    function migrateTo(address _from, address _to) onlyOwner beforeInitialized external returns (bool) {
-        require(_from != address(0));
-        require(_to != address(0));
-
-        uint256 balance = legacySycContract.balanceOf(_from);
-        require(balance > 0);
-
-        balances[_to] = balance;
-        totalSupply_ = totalSupply_.add(balance);
-        emit Migrate(_to, balance);
-        
-        // End migration process once target supply is met
-        if (shouldEndMigration()) {
-            endMigrationProcess();
-        }
+        tokenTimelock = new TokenTimelock(sycContract, msg.sender, timelockReleaseTime);
+        sycContract.transfer(tokenTimelock, timelockAmount);
+        migratedSupply = migratedSupply.add(timelockAmount);
+        emit Migrate(_legacyVaultAddress, timelockAmount);
     }
 
     /**
@@ -695,20 +637,19 @@ contract SynchroCoin is PausableERC223Token, Claimable, Initializable, Burnable 
      * @param _tokenHolders Array of addresses to migrate balance from the legacy contract
      * @return True if operation was completed
      */
-    function migrateBalances(address[] _tokenHolders) onlyOwner beforeInitialized public returns (bool) {
+    function migrateBalances(address[] _tokenHolders) onlyOwner external {
         for (uint256 i = 0; i < _tokenHolders.length; i++) {
             migrateBalance(_tokenHolders[i]);
         }
-        return true;
     }
 
-    /*
+    /**
      * @dev Copies the balance of a given address from the legacy contract
      * @param _tokenHolder Address to migrate balance from the legacy contract
      * @return True if balance was copied. False if balance had already been migrated or if address has zero balance in the legacy contract
      */
-    function migrateBalance(address _tokenHolder) onlyOwner beforeInitialized public returns (bool) {
-        if (balances[_tokenHolder] > 0) {
+    function migrateBalance(address _tokenHolder) onlyOwner public returns (bool) {
+        if (migrated[_tokenHolder]) {
             return false;   // Already migrated, therefore do nothing.
         }
 
@@ -718,38 +659,19 @@ contract SynchroCoin is PausableERC223Token, Claimable, Initializable, Burnable 
         }
 
         // Copy balance
-        balances[_tokenHolder] = balance;
-        totalSupply_ = totalSupply_.add(balance);
+        migrated[_tokenHolder] = true;
+        sycContract.transfer(_tokenHolder, balance);
+        migratedSupply = migratedSupply.add(balance);
         emit Migrate(_tokenHolder, balance);
-
-        // End migration process once target supply is met
-        if (shouldEndMigration()) {
-            endMigrationProcess();
-        }
-
         return true;
     }
 
     /**
-     * @dev Check if total supply has met the target supply
-     * @return True if the total supply has met the target supply
+     * @dev Destructs the contract and sends any remaining ETH/SYC to the owner.
      */
-    function shouldEndMigration() internal returns (bool) {
-        return targetSupply == totalSupply_;
-    }
-
-    /**
-     * @dev Set contract as initialized and unpause contract.
-     */
-    function endMigrationProcess() internal {
-        endInitialization();
-        unpause();
-    }
-
-    /**
-     * @dev Do not accept incoming ether
-     */
-    function() public payable {
-        revert();
+    function kill() onlyOwner public {
+        uint256 balance = sycContract.balanceOf(this);
+        sycContract.transfer(owner, balance);
+        selfdestruct(owner);
     }
 }
