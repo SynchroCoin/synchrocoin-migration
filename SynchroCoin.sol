@@ -596,7 +596,6 @@ contract MigrationAgent is Ownable {
     uint256 public targetSupply;    // Target supply amount to meet
     uint256 public migratedSupply;  // Total amount of tokens migrated
 
-    address[] public migratedAddresses;         // List of addresses that have been migrated
     mapping (address => bool) public migrated;  // Flags to keep track of addresses already migrated
 
     uint256 public timelockReleaseTime; // Timelocked token release time
